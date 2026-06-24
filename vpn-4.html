@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Обход блокировок</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0b0f; --surface: #13151c; --surface2: #181a24;
+    --border: #1e2130; --accent: #4f8ef7; --accent2: #7c3aed;
+    --text: #e2e8f0; --muted: #64748b; --green: #22c55e;
+  }
+  body { min-height:100vh;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;display:flex;flex-direction:column;align-items:center;padding:48px 16px 64px; }
+  .page { width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center; }
+  .hidden { display:none !important; }
+  .badge { display:inline-flex;align-items:center;gap:7px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.25);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 14px;border-radius:100px;margin-bottom:22px; }
+  .badge span { width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+  h1 { font-size:clamp(30px,6vw,50px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:12px;text-align:center; }
+  h1 em { font-style:normal;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+  .sub { color:var(--muted);font-size:15px;text-align:center;max-width:360px;line-height:1.6;margin-bottom:40px; }
+  .cards { display:flex;flex-direction:column;gap:14px;width:100%; }
+  .card { display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;text-decoration:none;color:var(--text);cursor:pointer;transition:border-color .2s,transform .2s,box-shadow .2s; }
+  .card:hover { border-color:rgba(79,142,247,.45);transform:translateY(-2px);box-shadow:0 10px 36px rgba(0,0,0,.45); }
+  .ico { width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:24px;flex-shrink:0; }
+  .info { flex:1; }
+  .name { font-size:16px;font-weight:700;margin-bottom:3px; }
+  .desc { font-size:12px;color:var(--muted);line-height:1.45; }
+  .tag { font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px;border-radius:8px;flex-shrink:0;background:rgba(34,197,94,.12);color:var(--green); }
+  .arr { color:var(--muted);font-size:20px;flex-shrink:0;transition:color .2s,transform .2s; }
+  .card:hover .arr { color:var(--accent);transform:translateX(4px); }
+  .footer { margin-top:44px;color:var(--muted);font-size:12px;text-align:center;line-height:1.9; }
+
+  /* INNER PAGES */
+  .page-header { display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:32px; }
+  .back-btn { display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:13px;padding:8px 16px;border-radius:10px;cursor:pointer;transition:border-color .2s,color .2s; }
+  .back-btn:hover { border-color:var(--accent);color:var(--accent); }
+  .json-btn { display:inline-flex;align-items:center;gap:6px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#a78bfa;font-family:'Space Mono',monospace;font-size:11px;padding:8px 14px;border-radius:10px;cursor:pointer;transition:background .2s,border-color .2s;letter-spacing:.04em; }
+  .json-btn:hover { background:rgba(124,58,237,.22);border-color:rgba(124,58,237,.5); }
+
+  .hero { text-align:center;margin-bottom:32px; }
+  .hero .big-ico { font-size:52px;margin-bottom:12px; }
+  .hero h2 { font-size:30px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px; }
+  .hero p { color:var(--muted);font-size:14px;line-height:1.6; }
+  .dl-btn { display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;padding:16px 24px;border-radius:14px;text-decoration:none;margin-bottom:32px;transition:opacity .2s,transform .2s; }
+  .dl-btn:hover { opacity:.88;transform:translateY(-1px); }
+  .sec-title { width:100%;display:flex;align-items:center;gap:12px;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;margin-bottom:14px; }
+  .sec-title::before,.sec-title::after { content:'';flex:1;height:1px;background:var(--border); }
+  .sub-cards { display:flex;flex-direction:column;gap:10px;width:100%;margin-bottom:32px; }
+  .sub-card { background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:14px; }
+  .sub-card .s-ico { font-size:20px;flex-shrink:0;width:36px;text-align:center; }
+  .sub-card .s-info { flex:1; }
+  .sub-card .s-name { font-size:14px;font-weight:700;margin-bottom:2px; }
+  .sub-card .s-url { font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);word-break:break-all;line-height:1.4; }
+  .copy-btn { background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.2);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0;transition:background .2s;white-space:nowrap; }
+  .copy-btn:hover { background:rgba(79,142,247,.22); }
+  .copy-btn.copied { background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.25); }
+  .steps { width:100%;display:flex;flex-direction:column;gap:10px; }
+  .step { background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start; }
+  .step-num { width:28px;height:28px;border-radius:8px;background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.2);color:var(--accent);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;display:grid;place-items:center;flex-shrink:0; }
+  .step-text { font-size:13px;line-height:1.6;color:var(--text); }
+  .step-text b { color:#fff; }
+  .step-text code { font-family:'Space Mono',monospace;font-size:11px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:5px; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto; }
+  .modal-overlay.hidden { display:none !important; }
+  .modal { background:var(--surface);border:1px solid var(--border);border-radius:18px;width:100%;max-width:560px;padding:24px; }
+  .modal-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px; }
+  .modal-title { font-size:16px;font-weight:700; }
+  .modal-close { background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px;transition:color .2s; }
+  .modal-close:hover { color:var(--text); }
+  .json-card { background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px; }
+  .json-card:last-child { margin-bottom:0; }
+  .json-card-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
+  .json-card-title { font-size:13px;font-weight:700; }
+  .json-card-subtitle { font-size:11px;color:var(--muted);margin-top:1px; }
+  .json-pre { background:#0d0e14;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:'Space Mono',monospace;font-size:10px;color:#94a3b8;overflow-x:auto;max-height:140px;overflow-y:auto;line-height:1.5;margin-bottom:10px;white-space:pre; }
+  .json-copy-btn { width:100%;background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.2);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;padding:8px;border-radius:8px;cursor:pointer;transition:background .2s; }
+  .json-copy-btn:hover { background:rgba(79,142,247,.22); }
+  .json-copy-btn.copied { background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.25); }
+</style>
+</head>
+<body>
+
+<!-- ГЛАВНАЯ -->
+<div id="main" class="page">
+  <div class="badge"><span></span>ОБХОД БЛОКИРОВОК</div>
+  <h1>Твои <em>инструменты</em></h1>
+  <p class="sub">3 способа обойти блокировки YouTube, Discord и других сайтов</p>
+  <div class="cards">
+    <div class="card" onclick="show('happ')">
+      <div class="ico" style="background:rgba(79,142,247,.15)">🚀</div>
+      <div class="info"><div class="name">HAPP</div><div class="desc">Простой VPN-клиент для РФ · скачать и настроить</div></div>
+      <span class="tag">FREE</span><span class="arr">›</span>
+    </div>
+    <div class="card" onclick="show('amnezia')">
+      <div class="ico" style="background:rgba(124,58,237,.15)">🛡️</div>
+      <div class="info"><div class="name">AmneziaWG</div><div class="desc">WireGuard с обфускацией · WARP · open source</div></div>
+      <span class="tag">OPEN SOURCE</span><span class="arr">›</span>
+    </div>
+    <div class="card" onclick="show('goodbye')">
+      <div class="ico" style="background:rgba(34,197,94,.12)">📱</div>
+      <div class="info"><div class="name">Bye Bye DPI</div><div class="desc">Обход DPI без VPN · Android · без root · by romanvht</div></div>
+      <span class="tag">OPEN SOURCE</span><span class="arr">›</span>
+    </div>
+  </div>
+  <div class="footer">
+    Нажми на карточку — откроется страница или инструкция<br>
+    <span style="color:var(--accent)">AmneziaWG</span> — WireGuard с WARP &nbsp;·&nbsp;
+    <span style="color:var(--green)">Bye Bye DPI</span> — без VPN, для Android
+  </div>
+</div>
+
+<!-- HAPP -->
+<div id="happ" class="page hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="show('main')">‹ Назад</button>
+    <button class="json-btn" onclick="openModal()">{ } JSON конфиги</button>
+  </div>
+
+  <div class="hero">
+    <div class="big-ico">🚀</div>
+    <h2>HAPP VPN</h2>
+    <p>Скачай приложение, добавь подписку — готово.<br>Работает на Windows и Android.</p>
+  </div>
+
+  <a class="dl-btn" href="https://play.google.com/store/apps/details?id=com.happproxy" target="_blank" rel="noopener">⬇ Скачать HAPP</a>
+
+  <div class="sec-title">ПОДПИСКИ (конфиги)</div>
+  <div class="sub-cards">
+    <div class="sub-card">
+      <div class="s-ico">🌐</div>
+      <div class="s-info">
+        <div class="s-name">Universal VLESS</div>
+        <div class="s-url">raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt</div>
+      </div>
+      <button class="copy-btn" onclick="copyUrl(this,'https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt')">Копировать</button>
+    </div>
+    <div class="sub-card">
+      <div class="s-ico">📋</div>
+      <div class="s-info">
+        <div class="s-name">RKP Bypass</div>
+        <div class="s-url">raw.githubusercontent.com/RKPchannel/RKP_bypass_configs/refs/heads/main/whitelist.txt</div>
+      </div>
+      <button class="copy-btn" onclick="copyUrl(this,'https://raw.githubusercontent.com/RKPchannel/RKP_bypass_configs/refs/heads/main/whitelist.txt')">Копировать</button>
+    </div>
+    <div class="sub-card">
+      <div class="s-ico">💜</div>
+      <div class="s-info">
+        <div class="s-name">Purple Subs</div>
+        <div class="s-url">hub.mos.ru/panosenk/sukasubs/-/raw/main/purple.txt</div>
+      </div>
+      <button class="copy-btn" onclick="copyUrl(this,'https://hub.mos.ru/panosenk/sukasubs/-/raw/main/purple.txt')">Копировать</button>
+    </div>
+  </div>
+
+  <div class="sec-title">ИНСТРУКЦИЯ</div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-text"><b>Скачай HAPP</b> — нажми кнопку выше и установи приложение.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><b>Открой приложение</b> и найди раздел <code>Подписки</code> или <code>Subscriptions</code>.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><b>Скопируй ссылку</b> на любую подписку выше — нажми <code>Копировать</code>.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text"><b>Вставь ссылку</b> в поле добавления подписки и нажми <code>Добавить</code>.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-text"><b>Выбери сервер</b> из списка и нажми <code>Подключить</code>. Готово! 🎉</div></div>
+    <div class="step"><div class="step-num">💡</div><div class="step-text"><b>Не работает?</b> Попробуй другую подписку — серверы периодически меняются.</div></div>
+  </div>
+</div>
+
+<!-- BYEDPI -->
+<div id="goodbye" class="page hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="show('main')">‹ Назад</button>
+  </div>
+  <div class="hero">
+    <div class="big-ico">📱</div>
+    <h2>Bye Bye DPI</h2>
+    <p>Обход блокировок без VPN на Android · by <b>romanvht</b>.<br>Не нужен root — просто скачай и запусти.</p>
+  </div>
+  <a class="dl-btn" href="https://github.com/romanvht/ByeByeDPI/releases/tag/v.1.7.5" target="_blank" rel="noopener">⬇ Скачать Bye Bye DPI (.apk)</a>
+  <div class="sec-title">ИНСТРУКЦИЯ</div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-text"><b>Скачай APK</b> по кнопке выше — нажми на файл <code>ByeDPI-*.apk</code> (от romanvht) в списке Assets.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><b>Установи APK</b> — если Android спросит разрешение на установку из неизвестных источников, разреши.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><b>Открой приложение</b> и нажми кнопку <code>Старт</code> — готово! 🎉</div></div>
+    <div class="step"><div class="step-num">💡</div><div class="step-text">Приложение создаёт локальный VPN-туннель на устройстве. Трафик <b>не уходит</b> на сторонние серверы.</div></div>
+  </div>
+</div>
+
+<!-- AMNEZIA -->
+<div id="amnezia" class="page hidden">
+  <div class="page-header">
+    <button class="back-btn" onclick="show('main')">‹ Назад</button>
+  </div>
+  <div class="hero">
+    <div class="big-ico">🛡️</div>
+    <h2>AmneziaWG</h2>
+    <p>WireGuard с обфускацией — сложно обнаружить.<br>Работает на Android, iOS, Windows, Mac.</p>
+  </div>
+
+  <a class="dl-btn" href="https://play.google.com/store/apps/details?id=org.amnezia.awg" target="_blank" rel="noopener">⬇ Скачать AmneziaWG</a>
+
+  <div class="sec-title">ШАГ 1 — ГЕНЕРАЦИЯ WARP КОНФИГА</div>
+  <div class="steps" style="margin-bottom:28px;">
+    <div class="step"><div class="step-num">1</div><div class="step-text"><b>Открой генератор WARP</b> — нажми кнопку ниже.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><b>Нажми Generate</b> на сайте — конфиг создастся автоматически.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><b>Скопируй конфиг</b> — нажми кнопку <code>Copy</code> или скачай файл.</div></div>
+  </div>
+
+  <a class="dl-btn" href="https://warp-generator.github.io/" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#f97316,#ef4444);margin-bottom:32px;">🌐 Открыть генератор WARP</a>
+
+  <div class="sec-title">ШАГ 2 — ИМПОРТ В AMNEZIAWG</div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-text"><b>Открой AmneziaWG</b> и нажми <code>+</code> или <code>Добавить туннель</code>.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><b>Выбери</b> <code>Создать из файла или QR-кода</code> или <code>Вставить из буфера обмена</code>.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><b>Вставь скопированный конфиг</b> — приложение его распознает и добавит туннель.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text"><b>Включи туннель</b> — нажми переключатель рядом с добавленным конфигом. Готово! 🎉</div></div>
+    <div class="step"><div class="step-num">💡</div><div class="step-text">Если WARP не работает — сгенерируй новый конфиг на сайте, старые иногда перестают отвечать.</div></div>
+  </div>
+</div>
+
+<!-- JSON MODAL -->
+<div id="json-modal" class="modal-overlay hidden" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">{ } JSON конфиги</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Умная маршрутизация для HAPP / Xray</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+
+    <div class="json-card">
+      <div class="json-card-header">
+        <div>
+          <div class="json-card-title">🇪🇺 Умная маршрутизация (by D ZERO)</div>
+          <div class="json-card-subtitle">36 серверов · leastLoad балансировка · VLESS Reality + Shadowsocks</div>
+        </div>
+      </div>
+      <div class="json-pre" id="json1-preview">{ "remarks": "🇪🇺 Умная маршрутизация (by D ZERO)", "burstObservatory": { ... }, "dns": { "queryStrategy": "UseIPv4", ... }, "routing": { "domainStrategy": "IPIfNonMatch", "balancers": [ { "strategy": { "type": "leastLoad" } } ] }, "outbounds": [ "proxy", "proxy-2", ... "neuro-*", "glowbreeze-hub2", "anytube-media9", "yunus-rezerv", "janusgate", "vpnbypass-de/nl", "nl01-cherry" ] }</div>
+      <button class="json-copy-btn" id="btn-json1" onclick="copyJson(this, 'json1')">Копировать JSON</button>
+    </div>
+
+    <div class="json-card">
+      <div class="json-card-header">
+        <div>
+          <div class="json-card-title">⚡ БС + ЧС Гиперстабильный | By D ZERO</div>
+          <div class="json-card-subtitle">13 серверов · leastPing балансировка · VLESS Reality + Trojan</div>
+        </div>
+      </div>
+      <div class="json-pre" id="json2-preview">{ "remarks": "БС + ЧС Гиперстабильный | By D ZERO", "observatory": { "probeUrl": "https://www.google.com/generate_204" }, "dns": { "queryStrategy": "UseIPv4", ... }, "routing": { "domainStrategy": "IPIfNonMatch", "balancers": [ { "strategy": { "type": "leastPing" } } ] }, "outbounds": [ "proxy-se-shvetsiya", "proxy-ru-moscow", "proxy-pl-poland*", "proxy-nl-netherlands", "proxy-us-usa*", "proxy-dk-x1" ] }</div>
+      <button class="json-copy-btn" id="btn-json2" onclick="copyJson(this, 'json2')">Копировать JSON</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const JSON1 = `{
+  "burstObservatory": {
+    "pingConfig": {
+      "connectivity": "",
+      "destination": "http://www.gstatic.com/generate_204",
+      "interval": "3m",
+      "sampling": 1,
+      "timeout": "2s"
+    },
+    "subjectSelector": [
+      "proxy","proxy-2","proxy-3","proxy-4","proxy-5","proxy-6","proxy-7","proxy-8","proxy-9","proxy-10",
+      "proxy-11","proxy-12","proxy-13","proxy-14","proxy-15","proxy-16","proxy-17","proxy-18","proxy-19","proxy-20",
+      "neuro-453","neuro-452","neuro-455","neuro-456","neuro-450","neuro-458",
+      "glowbreeze-hub2","anytube-media9",
+      "yunus-rezerv","yunus-rezerv1","yunus-rezerv3",
+      "nl01-cherry","rezerv8-yunus","janusgate","vpnbypass-de","vpnbypass-nl"
+    ]
+  },
+  "dns": {
+    "queryStrategy": "UseIPv4",
+    "servers": [
+      {"address":"77.88.8.8","domains":["domain:ru","domain:su","yandex","vk.com","ozon.ru","timeweb.cloud"],"port":53,"skipFallback":true},
+      {"address":"https://1.1.1.1/dns-query","domains":[]},"1.1.1.1","8.8.8.8"
+    ],
+    "tag": "dns_inbound"
+  },
+  "inbounds": [
+    {"listen":"127.0.0.1","port":10808,"protocol":"socks","settings":{"auth":"noauth","udp":true},"sniffing":{"destOverride":["http","tls","quic"],"enabled":true},"tag":"socks"},
+    {"listen":"127.0.0.1","port":10809,"protocol":"http","settings":{"allowTransparent":false},"sniffing":{"destOverride":["http","tls","quic"],"enabled":true},"tag":"http"}
+  ],
+  "remarks": "\uD83C\uDDEA\uD83C\uDDFA Умная маршрутизация (by D ZERO)",
+  "routing": {
+    "balancers": [{"fallbackTag":"direct","selector":["proxy","proxy-2","proxy-3","proxy-4","proxy-5","proxy-6","proxy-7","proxy-8","proxy-9","proxy-10","proxy-11","proxy-12","proxy-13","proxy-14","proxy-15","proxy-16","proxy-17","proxy-18","proxy-19","proxy-20","neuro-453","neuro-452","neuro-455","neuro-456","neuro-450","neuro-458","glowbreeze-hub2","anytube-media9","yunus-rezerv","yunus-rezerv1","yunus-rezerv3","nl01-cherry","rezerv8-yunus","janusgate","vpnbypass-de","vpnbypass-nl"],"strategy":{"settings":{"baselines":["500ms"],"expected":4,"maxRTT":"700ms","tolerance":0.2},"type":"leastLoad"},"tag":"Balancer"}],
+    "domainMatcher": "hybrid",
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {"balancerTag":"Balancer","inboundTag":["dns_inbound"],"ip":["1.1.1.1"],"port":"443","type":"field"},
+      {"inboundTag":["dns_inbound"],"ip":["77.88.8.8"],"outboundTag":"direct","port":"53","type":"field"},
+      {"balancerTag":"Balancer","ip":["1.1.1.1"],"type":"field"},
+      {"outboundTag":"direct","protocol":["bittorrent"],"type":"field"},
+      {"balancerTag":"Balancer","domain":["pikabu.ru"],"type":"field"},
+      {"domain":["max.ru","oneme.ru"],"outboundTag":"block","type":"field"},
+      {"balancerTag":"Balancer","network":"tcp,udp","type":"field"}
+    ]
+  }
+}`;
+
+const JSON2 = `{
+  "remarks": "БС + ЧС Гиперстабильный | By D ZERO",
+  "dns": {
+    "queryStrategy": "UseIPv4",
+    "servers": [
+      "https://cloudflare-dns.com/dns-query",
+      {"address":"https://cloudflare-dns.com/dns-query","domains":[]},
+      {"address":"https://dns.google/dns-query","domains":["domain:yandex","domain:vk.com","domain:sber.ru","domain:ozon.ru","domain:wildberries.ru","domain:mail.ru"]}
+    ]
+  },
+  "inbounds": [
+    {"listen":"127.0.0.1","port":10808,"protocol":"socks","settings":{"auth":"noauth","udp":true},"sniffing":{"destOverride":["http","tls","quic"],"enabled":true,"routeOnly":true},"tag":"socks-in"},
+    {"listen":"127.0.0.1","port":10809,"protocol":"http","settings":{"allowTransparent":false},"sniffing":{"destOverride":["http","tls","quic"],"enabled":true,"routeOnly":true},"tag":"http-in"}
+  ],
+  "observatory": {
+    "enableConcurrency": true,
+    "probeInterval": "2m",
+    "probeUrl": "https://www.google.com/generate_204",
+    "subjectSelector": ["proxy-se-shvetsiya","proxy-ru-moscow2","proxy-us-usa3","proxy-ru-moscow","proxy-us-usa2","proxy-pl-poland2","proxy-pl-poland","proxy-pl-poland3","proxy-nl-netherlands","proxy-us-usa","proxy-other-beautybox","proxy-other-ads-x5","proxy-dk-x1"]
+  },
+  "routing": {
+    "domainMatcher": "hybrid",
+    "domainStrategy": "IPIfNonMatch",
+    "balancers": [{"tag":"balancer","selector":["proxy-se-shvetsiya","proxy-ru-moscow2","proxy-us-usa3","proxy-ru-moscow","proxy-us-usa2","proxy-pl-poland2","proxy-pl-poland","proxy-pl-poland3","proxy-nl-netherlands","proxy-us-usa","proxy-other-beautybox","proxy-other-ads-x5","proxy-dk-x1"],"strategy":{"type":"leastPing","settings":{"expected":1,"maxRTT":"800ms","baselines":["150ms","300ms"]}}}],
+    "rules": [
+      {"domain":["geoip:private","geosite:private"],"outboundTag":"direct"},
+      {"protocol":["bittorrent"],"outboundTag":"block"},
+      {"domain":["domain:gosuslugi.ru","domain:sberbank.ru","domain:tinkoff.ru","domain:vk.com","domain:yandex.ru","domain:rutube.ru","domain:ivi.ru","domain:ozon.ru","domain:wildberries.ru","domain:mail.ru"],"outboundTag":"direct"},
+      {"balancerTag":"balancer","inboundTag":["socks-in","http-in"],"network":"tcp,udp"}
+    ]
+  }
+}`;
+
+  function show(id) {
+    ['main','happ','goodbye','amnezia'].forEach(p => document.getElementById(p).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function copyUrl(btn, url) {
+    navigator.clipboard.writeText(url).then(() => {
+      btn.textContent = '✓ Скопировано';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Копировать'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function openModal() {
+    document.getElementById('json-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('json-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('json-modal')) closeModal();
+  }
+
+  function copyJson(btn, which) {
+    const text = which === 'json1' ? JSON1 : JSON2;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓ Скопировано!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Копировать JSON'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
